@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Interactive Netflix Dashboard</title>
+  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+    .chart-container {
+      margin-top: 30px;
+    }
+    #charts > div {
+      margin-bottom: 40px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Netflix Performance Dashboard</h1>
+  <input type="file" id="fileInput" accept="application/json" />
+  <div id="charts">
+    <div id="typeChart" class="chart-container"></div>
+    <div id="trendChart" class="chart-container"></div>
+    <div id="genreChart" class="chart-container"></div>
+    <div id="countryChart" class="chart-container"></div>
+    <div id="ratingChart" class="chart-container"></div>
+  </div>
+
+  <script>
+    document.getElementById('fileInput').addEventListener('change', function (e) {
+      const file = e.target.files[0];
+      const reader = new FileReader();
+
+      reader.onload = function (event) {
+        const data = JSON.parse(event.target.result);
+        generateDashboard(data);
+      };
+
+      reader.readAsText(file);
+    });
+
+    function generateDashboard(data) {
+      const typeCount = {};
+      const dateTrend = {};
+      const genreCount = {};
+      const countryCount = {};
+      const ratingCount = {};
+
+      data.forEach(item => {
+        // Type Count
+        typeCount[item.type] = (typeCount[item.type] || 0) + 1;
+
+        // Date Added Trend
+        if (item.date_added) {
+          const year = new Date(item.date_added).getFullYear();
+          dateTrend[year] = (dateTrend[year] || 0) + 1;
+        }
+
+        // Genre Count
+        item.listed_in.split(',').forEach(genre => {
+          const trimmed = genre.trim();
+          genreCount[trimmed] = (genreCount[trimmed] || 0) + 1;
+        });
+
+        // Country Count
+        if (item.country) {
+          countryCount[item.country] = (countryCount[item.country] || 0) + 1;
+        }
+
+        // Rating Count
+        if (item.rating) {
+          ratingCount[item.rating] = (ratingCount[item.rating] || 0) + 1;
+        }
+      });
+
+      // Type Chart
+      Plotly.newPlot('typeChart', [{
+        labels: Object.keys(typeCount),
+        values: Object.values(typeCount),
+        type: 'pie'
+      }], { title: 'Content Type Distribution' });
+
+      // Date Trend Chart
+      const sortedYears = Object.keys(dateTrend).sort();
+      Plotly.newPlot('trendChart', [{
+        x: sortedYears,
+        y: sortedYears.map(year => dateTrend[year]),
+        type: 'scatter',
+        mode: 'lines+markers'
+      }], { title: 'Content Addition Over Time' });
+
+      // Genre Chart
+      const sortedGenres = Object.entries(genreCount).sort((a, b) => b[1] - a[1]).slice(0, 10);
+      Plotly.newPlot('genreChart', [{
+        x: sortedGenres.map(g => g[1]),
+        y: sortedGenres.map(g => g[0]),
+        type: 'bar',
+        orientation: 'h'
+      }], { title: 'Top 10 Genres by Count' });
+
+      // Country Chart
+      const topCountries = Object.entries(countryCount).sort((a, b) => b[1] - a[1]).slice(0, 10);
+      Plotly.newPlot('countryChart', [{
+        x: topCountries.map(c => c[0]),
+        y: topCountries.map(c => c[1]),
+        type: 'bar'
+      }], { title: 'Top 10 Content Producing Countries' });
+
+      // Rating Chart
+      const ratingSorted = Object.entries(ratingCount).sort((a, b) => b[1] - a[1]);
+      Plotly.newPlot('ratingChart', [{
+        x: ratingSorted.map(r => r[0]),
+        y: ratingSorted.map(r => r[1]),
+        type: 'bar'
+      }], { title: 'Rating Distribution' });
+    }
+  </script>
+</body>
+</html>

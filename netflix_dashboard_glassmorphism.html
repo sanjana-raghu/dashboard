@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Interactive Netflix Dashboard</title>
+  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: linear-gradient(to bottom right, #dff6ff, #e0f7fa);
+    }
+    .chart-container {
+      margin-top: 30px;
+      width: 40%;
+      padding: 20px;
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.15);
+      box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      margin-bottom: 40px;
+    }
+    h1 {
+      color: #003b73;
+    }
+    input[type="file"] {
+      margin-bottom: 20px;
+    }
+    #charts {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-around;
+      gap: 20px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Netflix Performance Dashboard</h1>
+  <input type="file" id="fileInput" accept="application/json" />
+  <div id="charts">
+    <div id="typeChart" class="chart-container"></div>
+    <div id="trendChart" class="chart-container"></div>
+    <div id="genreChart" class="chart-container"></div>
+    <div id="countryChart" class="chart-container"></div>
+    <div id="ratingChart" class="chart-container"></div>
+  </div>
+
+  <script>
+    document.getElementById('fileInput').addEventListener('change', function (e) {
+      const file = e.target.files[0];
+      const reader = new FileReader();
+
+      reader.onload = function (event) {
+        const data = JSON.parse(event.target.result);
+        generateDashboard(data);
+      };
+
+      reader.readAsText(file);
+    });
+
+    function generateDashboard(data) {
+      const typeCount = {};
+      const dateTrend = {};
+      const genreCount = {};
+      const countryCount = {};
+      const ratingCount = {};
+
+      data.forEach(item => {
+        typeCount[item.type] = (typeCount[item.type] || 0) + 1;
+        if (item.date_added) {
+          const year = new Date(item.date_added).getFullYear();
+          dateTrend[year] = (dateTrend[year] || 0) + 1;
+        }
+        item.listed_in.split(',').forEach(genre => {
+          const trimmed = genre.trim();
+          genreCount[trimmed] = (genreCount[trimmed] || 0) + 1;
+        });
+        if (item.country) {
+          countryCount[item.country] = (countryCount[item.country] || 0) + 1;
+        }
+        if (item.rating) {
+          ratingCount[item.rating] = (ratingCount[item.rating] || 0) + 1;
+        }
+      });
+
+      Plotly.newPlot('typeChart', [{
+        labels: Object.keys(typeCount),
+        values: Object.values(typeCount),
+        type: 'pie'
+      }], { title: 'Content Type Distribution' });
+
+      const sortedYears = Object.keys(dateTrend).sort();
+      Plotly.newPlot('trendChart', [{
+        x: sortedYears,
+        y: sortedYears.map(year => dateTrend[year]),
+        type: 'scatter',
+        mode: 'lines+markers'
+      }], { title: 'Content Addition Over Time' });
+
+      const sortedGenres = Object.entries(genreCount).sort((a, b) => b[1] - a[1]).slice(0, 10);
+      Plotly.newPlot('genreChart', [{
+        x: sortedGenres.map(g => g[1]),
+        y: sortedGenres.map(g => g[0]),
+        type: 'bar',
+        orientation: 'h'
+      }], { title: 'Top 10 Genres by Count' });
+
+      const topCountries = Object.entries(countryCount).sort((a, b) => b[1] - a[1]).slice(0, 10);
+      Plotly.newPlot('countryChart', [{
+        x: topCountries.map(c => c[0]),
+        y: topCountries.map(c => c[1]),
+        type: 'bar'
+      }], { title: 'Top 10 Content Producing Countries' });
+
+      const ratingSorted = Object.entries(ratingCount).sort((a, b) => b[1] - a[1]);
+      Plotly.newPlot('ratingChart', [{
+        x: ratingSorted.map(r => r[0]),
+        y: ratingSorted.map(r => r[1]),
+        type: 'bar'
+      }], { title: 'Rating Distribution' });
+    }
+  </script>
+</body>
+</html>
